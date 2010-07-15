@@ -1,0 +1,6 @@
+include MANIFEST.in
+include README.rst
+include distribute_setup.py
+include setup.py
+include setup.cfg
+include wpmarkup/__init__.py
