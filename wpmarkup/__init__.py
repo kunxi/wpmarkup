@@ -37,6 +37,11 @@ class Markup:
         >>> Markup.render('<pre>sadsadasd</code>"baba"</pre>')
         '<pre>sadsadasd</code>"baba"</pre>'
         """
+        return Markup.wptexturize(raw)
+
+
+    @staticmethod
+    def wptexturize(raw):
         no_texturize_tags_stack = []
         no_texturize_shortcodes_stack = []
         output = []
