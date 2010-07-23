@@ -27,7 +27,7 @@ function wptexturize($text) {
 	$static_replacements = array_merge(array('&#8212;', ' &#8212; ', '&#8211;', ' &#8211; ', 'xn--', '&#8230;', $opening_quote, '&#8217;s', $closing_quote, ' &#8482;'), $cockneyreplace);
 
 	$dynamic_characters = array('/\'(\d\d(?:&#8217;|\')?s)/', '/(\s|\A|")\'/', '/(\d+)"/', '/(\d+)\'/', '/(\S)\'([^\'\s])/', '/(\s|\A)"(?!\s)/', '/"(\s|\S|\Z)/', '/\'([\s.]|\Z)/', '/(\d+)x(\d+)/');
-    $dynamic_replacements = array('&#8217;$1','$1&#8216;', '$1&#8243;', '$1&#8242;', '$1&#8217;$2', '$1' . $opening_quote . '$2', $closing_quote . '$1', '&#8217;$1', '$1&#215;$2');
+	$dynamic_replacements = array('&#8217;$1','$1&#8216;', '$1&#8243;', '$1&#8242;', '$1&#8217;$2', '$1' . $opening_quote . '$2', $closing_quote . '$1', '&#8217;$1', '$1&#215;$2');
 
     for ( $i = 0; $i < $stop; $i++ ) {
         $curl = $textarr[$i];
@@ -154,6 +154,6 @@ $text = fread($handle, 5000);
 fclose($handle);
 
 $handle = fopen($argv[2], "w");
-fwrite($handle, wpautop($text));
+fwrite($handle, wpautop(wptexturize($text)));
 fclose($handle);
 ?>

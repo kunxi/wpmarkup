@@ -4,6 +4,7 @@ import re
 A simple WordPress markup.
 
 """
+VERSION = "0.2"
 
 class Markup:
     #   TODOl: add the l10n support
@@ -19,8 +20,9 @@ class Markup:
     static_dict = dict(zip(static_characters+cockney, static_replacements+cockneyreplace))
     static_regex = re.compile("(%s)" % "|".join(map(re.escape, static_dict.keys())))
 
-    dynamic_characters = [ "'(\d\d(?:&#8217;|')?s)", '(\s|\A|")\'', '(\d+)"', "(\d+)'", "(\S)'([^'\s])", '(\s|\A)"(?!\s)', '"(\s|\S|\Z)', "'([\s.]|\Z)", '(\d+)x(\d+)', '&([^#])(?![a-zA-Z1-4]{1,8};)' ]
-    dynamic_replacements = [ '&#8217;\1', '\1&#8216;', '\1&#8243;', '\1&#8242;', '\1&#8217;\2', '\1%s' % opening_quote , '%s\1' % closing_quote, '&#8217;\1', '\1&#215;\2', '&#038;\1' ]
+    dynamic_characters = [ "'(\d\d(?:&#8217;|')?s)", '(\s|\A|")\'', '(\d+)"', "(\d+)'", "(\S)'([^'\s])", r'(\s|\A)"(?!\s)', '"(\s|\S|\Z)', "'([\s.]|\Z)", '(\d+)x(\d+)', '&([^#])(?![a-zA-Z1-4]{1,8};)' ]
+
+    dynamic_replacements = [ r'&#8217;\1', r'\1&#8216;', r'\1&#8243;', r'\1&#8242;', r'\1&#8217;\2', r'\1%s' % opening_quote , r'%s\1' % closing_quote, r'&#8217;\1', r'\1&#215;\2', r'&#038;\1' ]
     dynamic_regex = zip([ re.compile(x, re.DOTALL) for x in dynamic_characters ], dynamic_replacements)
 
     no_texturize_tags = ['pre', 'code', 'kbd', 'style', 'script', 'tt']
@@ -30,26 +32,27 @@ class Markup:
     allblocks = '(?:table|thead|tfoot|caption|col|colgroup|tbody|tr|td|th|div|dl|dd|dt|ul|ol|li|pre|select|form|map|area|blockquote|address|math|style|input|p|h[1-6]|hr)'
     multiline_regexs = [
         [re.compile('<br />\s*?<br />', re.M), "\n\n"],
-        [re.compile('<%s[^>]*>' % allblocks), "\n\1"],
-        [re.compile('</%s\s*>' % allblocks), "\n\n\1"],
+        [re.compile('(<%s[^>]*>)' % allblocks), r"\n\1"],
+        [re.compile('(</%s\s*>)' % allblocks), r"\1\n\n"],
         [re.compile('(\r\n|\r)', re.M), "\n"],
-        [re.compile('\s*<param([^>]*)>\s*', re.M), "<param\1>"],
+        [re.compile('\s*<param([^>]*)>\s*', re.M), r"<param\1>"],
         [re.compile('\s*<embed>\s*', re.M), "<embed>"],
         [re.compile('\n\n+', re.M), "\n\n" ],
     ]
     newline_split_regex = re.compile("\n\s*\n")
     oneline_regexs = [
         [re.compile("<p>\s*</p>"), ''],
-        [re.compile("<p>([^<]+)</(div|address|form)>"), '<p>\1</p></2>'],
-        [re.compile("<p>\s*(</?%s[^>]*>)\s*</p>" % allblocks), '\1'],
-        [re.compile("<p>(<li.+?)</p>"), '\1'],
-        [re.compile("<p><blockquote([^>]*)>", re.IGNORECASE), '<blockquote\1><p>'],
+        [re.compile("<p>([^<]+)</(div|address|form)>"), r'<p>\1</p></2>'],
+        [re.compile("<p>\s*(</?%s[^>]*>)\s*</p>" % allblocks), r'\1'],
+        [re.compile("<p>(<li.+?)</p>"), r'\1'],
+        [re.compile("<p><blockquote([^>]*)>", re.IGNORECASE), r'<blockquote\1><p>'],
         [re.compile("</blockquote></p>"), '</p></blockquote>'],
-        [re.compile("<p>\s*(</?%s'[^>]*>)" % allblocks), '\1'],
-        [re.compile("(</?%s[^>]*>)\s*</p>" % allblocks), '\1'],
-        # split to oneline2_regex if we want to support br=1
-        [re.compile("(</?%s[^>]*>)\s*<br />" % allblocks), '\1'],
-        [re.compile("<br />(\s*</?(?:p|li|div|dl|dd|dt|th|pre|td|ul|ol)[^>]*>)"), '\1'],
+        [re.compile(r"<p>\s*(</?%s[^>]*>)" % allblocks), r'\1'],
+        [re.compile("(</?%s[^>]*>)\s*</p>" % allblocks), r'\1'],
+        # br = 1 start
+        # br = 1 end
+        [re.compile("(</?%s[^>]*>)\s*<br />" % allblocks), r'\1'],
+        [re.compile("<br />(\s*</?(?:p|li|div|dl|dd|dt|th|pre|td|ul|ol)[^>]*>)"), r'\1'],
         [re.compile("(<pre[^>]*>)(.*?)</pre>", re.I), 
             lambda m: "%s%s</pre>" % match.groups().replace('<br />', '') \
             .replace('<p>', '\n').replace('</p>', '') ],
@@ -80,7 +83,10 @@ class Markup:
                     and len(no_texturize_tags_stack) ==  0: #If it's not a tag
                 token = Markup.static_regex.sub(lambda mo: Markup.static_dict[mo.string[mo.start():mo.end()]], token) 
                 for regex, repl in Markup.dynamic_regex:
-                    token = regex.sub(repl, token)
+                    try:
+                        token = regex.sub(repl, token)
+                    except Exception:
+                        import pdb; pdb.set_trace()
             else:
                 Markup.pushpop_element(token, no_texturize_tags_stack, Markup.no_texturize_tags, '<', '>');
                 Markup.pushpop_element(token, no_texturize_shortcodes_stack, Markup.no_texturize_shortcodes, '[', ']');
@@ -119,7 +125,7 @@ class Markup:
         for regex, repl in Markup.multiline_regexs:
             pee = regex.sub(repl, pee)
 
-        pee = "".join( ["<p>%s</p>\n" % x.strip() for x in Markup.newline_split_regex.split(pee) if x.strip() != ''])
+        pee = "".join( ["<p>%s</p>\n" % x.strip() for x in Markup.newline_split_regex.split(pee) if x.strip() ])
 
         for regex, repl in Markup.oneline_regexs:
             pee = regex.sub(repl, pee)
