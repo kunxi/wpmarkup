@@ -20,7 +20,7 @@ class Markup:
     static_dict = dict(zip(static_characters+cockney, static_replacements+cockneyreplace))
     static_regex = re.compile("(%s)" % "|".join(map(re.escape, static_dict.keys())))
 
-    dynamic_characters = [ "'(\d\d(?:&#8217;|')?s)", '(\s|\A|")\'', '(\d+)"', "(\d+)'", "(\S)'([^'\s])", r'(\s|\A)"(?!\s)', '"(\s|\S|\Z)', "'([\s.]|\Z)", '(\d+)x(\d+)', '&([^#])(?![a-zA-Z1-4]{1,8};)' ]
+    dynamic_characters = [ "'(\d\d(?:&#8217;|')?s)", '(\s|\A|")\'', '(\d+)"', "(\d+)'", "(\S)'([^'\s])", r'(\s|\A)"(?!\s)', '"(\s|\S|\Z)', "'([\s.]|\Z)", '(\d+)x(\d+)', r'&([^#])(?![a-zA-Z1-4]{1,8};)' ]
 
     dynamic_replacements = [ r'&#8217;\1', r'\1&#8216;', r'\1&#8243;', r'\1&#8242;', r'\1&#8217;\2', r'\1%s' % opening_quote , r'%s\1' % closing_quote, r'&#8217;\1', r'\1&#215;\2', r'&#038;\1' ]
     dynamic_regex = zip([ re.compile(x, re.DOTALL) for x in dynamic_characters ], dynamic_replacements)
@@ -50,11 +50,15 @@ class Markup:
         [re.compile(r"<p>\s*(</?%s[^>]*>)" % allblocks), r'\1'],
         [re.compile("(</?%s[^>]*>)\s*</p>" % allblocks), r'\1'],
         # br = 1 start
+        [re.compile(r"<(script|style).*?</\1>"),
+            lambda m: m.groups().replace("\n", "<WPPreserveNewline />") ],
+        [re.compile(r"(?<!<br />)\s*\n"), r'<br />\n'],
+        [re.compile(r"<WPPreserveNewline />"), r'\n'],
         # br = 1 end
         [re.compile("(</?%s[^>]*>)\s*<br />" % allblocks), r'\1'],
         [re.compile("<br />(\s*</?(?:p|li|div|dl|dd|dt|th|pre|td|ul|ol)[^>]*>)"), r'\1'],
         [re.compile("(<pre[^>]*>)(.*?)</pre>", re.I), 
-            lambda m: "%s%s</pre>" % match.groups().replace('<br />', '') \
+            lambda m: "%s%s</pre>" % m.groups().replace('<br />', '') \
             .replace('<p>', '\n').replace('</p>', '') ],
         [re.compile("\n</p>$"), '</p>'],
     ]
@@ -83,10 +87,7 @@ class Markup:
                     and len(no_texturize_tags_stack) ==  0: #If it's not a tag
                 token = Markup.static_regex.sub(lambda mo: Markup.static_dict[mo.string[mo.start():mo.end()]], token) 
                 for regex, repl in Markup.dynamic_regex:
-                    try:
-                        token = regex.sub(repl, token)
-                    except Exception:
-                        import pdb; pdb.set_trace()
+                    token = regex.sub(repl, token)
             else:
                 Markup.pushpop_element(token, no_texturize_tags_stack, Markup.no_texturize_tags, '<', '>');
                 Markup.pushpop_element(token, no_texturize_shortcodes_stack, Markup.no_texturize_shortcodes, '[', ']');
@@ -125,7 +126,7 @@ class Markup:
         for regex, repl in Markup.multiline_regexs:
             pee = regex.sub(repl, pee)
 
-        pee = "".join( ["<p>%s</p>\n" % x.strip() for x in Markup.newline_split_regex.split(pee) if x.strip() ])
+        pee = "".join( ["<p>%s</p>\n" % x.strip("\n") for x in Markup.newline_split_regex.split(pee) if x.strip() ])
 
         for regex, repl in Markup.oneline_regexs:
             pee = regex.sub(repl, pee)
