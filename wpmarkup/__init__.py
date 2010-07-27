@@ -56,10 +56,10 @@ class Markup:
         [re.compile(r"<p>\s*(</?%s[^>]*>)" % allblocks), r'\1'],
         [re.compile("(</?%s[^>]*>)\s*</p>" % allblocks), r'\1'],
         # br = 1 start
-        [re.compile(r"<(script|style).*?</\1>"),
-            lambda m: m.groups().replace("\n", "<WPPreserveNewline />") ],
-        [re.compile(r"(?<!<br />)\s*\n"), r'<br />\n'],
-        [re.compile(r"<WPPreserveNewline />"), r'\n'],
+        #[re.compile(r"<(script|style).*?</\1>"),
+        #    lambda m: m.groups().replace("\n", "<WPPreserveNewline />") ],
+        #[re.compile(r"(?<!<br />)\s*\n"), r'<br />\n'],
+        #[re.compile(r"<WPPreserveNewline />"), r'\n'],
         # br = 1 end
         [re.compile("(</?%s[^>]*>)\s*<br />" % allblocks), r'\1'],
         [re.compile("<br />(\s*</?(?:p|li|div|dl|dd|dt|th|pre|td|ul|ol)[^>]*>)"), r'\1'],
@@ -183,7 +183,7 @@ if __name__ == "__main__":
         f = open(sys.argv[1], 'r')
         o = open(sys.argv[2], 'w')
         raw = f.read().decode("UTF-8")
-        rendered = Markup.render(raw)
+        rendered = Markup.wpautop(Markup.pygmentize(raw))
         o.write(rendered.encode("UTF-8"))
 
 
