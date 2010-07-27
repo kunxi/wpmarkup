@@ -10,7 +10,7 @@ except ImportError:
 A simple WordPress markup.
 
 """
-VERSION = "0.2"
+VERSION = "0.2.1"
 
 class Markup:
     #   TODOl: add the l10n support
