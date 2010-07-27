@@ -1,5 +1,11 @@
 #!/usr/bin/env python
 import re
+try:
+    from pygments import lexers, formatters, highlight
+    PYGMENTS_INSTALLED = True
+except ImportError:
+    PYGMENTS_INSTALLED = False
+
 """
 A simple WordPress markup.
 
@@ -63,9 +69,15 @@ class Markup:
         [re.compile("\n</p>$"), '</p>'],
     ]
 
+    pyg_regex = re.compile(r'<code(.*?)>(.*?)</code>', re.DOTALL) 
+   
+
     @staticmethod
     def render(raw):
-        return Markup.wpautop(Markup.wptexturize(raw))
+        rendered = raw
+        if PYGMENTS_INSTALLED:
+            rendered = Markup.pygmentize(rendered)
+        return Markup.wpautop(Markup.wptexturize(rendered))
 
 
     @staticmethod
@@ -132,13 +144,46 @@ class Markup:
             pee = regex.sub(repl, pee)
         return pee
 
+    @staticmethod
+    def pygmentize(raw):
+
+        ''' 
+        Finds all <code class="python"></code> blocks in a text block and replaces it with 
+        pygments-highlighted html semantics. It relies that you provide the format of the 
+        input as class attribute.
+
+        Inspiration:  http://www.djangosnippets.org/snippets/25/
+        Updated by: Samualy Clay
+
+        '''
+        last_end = 0 
+        rendered = '' 
+
+        for match_obj in Markup.pyg_regex.finditer(raw): 
+            code_class = match_obj.group(1) 
+            code_string = match_obj.group(2) 
+            if code_class.find('class') >= 0:
+                language = re.split(r'"|\'', code_class)[1] 
+                lexer = lexers.get_lexer_by_name(language) 
+            else: 
+                try: 
+                    lexer = lexers.guess_lexer(str(code_string)) 
+                except ValueError: 
+                    lexer = lexers.PythonLexer() 
+            pygmented_string = highlight(code_string, lexer, formatters.HtmlFormatter()) 
+            rendered += raw[last_end:match_obj.start(0)] + pygmented_string 
+            last_end = match_obj.end(0) 
+        rendered += raw[last_end:] 
+        return rendered
+
 
 if __name__ == "__main__":
     import sys
     if len(sys.argv) == 3:
         f = open(sys.argv[1], 'r')
         o = open(sys.argv[2], 'w')
-        raw = f.read()
-        o.write(Markup.render(raw))
+        raw = f.read().decode("UTF-8")
+        rendered = Markup.render(raw)
+        o.write(rendered.encode("UTF-8"))
 
 
